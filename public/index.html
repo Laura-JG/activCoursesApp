@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ActivFitness courses scheduler</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+</head>
+<body>
+    <div class="container">
+        <div class="row m-0 my-1 justify-content-center">
+            <div class=" h1 text-primary">ActivFitness courses scheduler</div>
+        </div>
+        <div class="row m-0 my-1" id="container-root">
+            
+        </div>
+    </div>
+    <script src="index.js"></script>
+    <script>
+        const containerRoot = document.getElementById('container-root')
+        const daysComponents = {}
+
+        const generateColumn = (day) => {
+            const column = document.createElement('div');
+            column.classList.add('col-md')
+            const title = document.createElement('div')
+            title.classList.add('row','justify-content-center', 'h3')
+            title.innerText = day.name;
+            column.appendChild(title)
+            return column;
+        }
+        const getColumnForCourse = (course) => {
+            //from course date get day number
+            const dayNumber = course.start.getDay();
+            //return corresponding day component
+            const [foundKey, foundValue] = Object.entries(daysComponents).find(([k, v]) => v.weekday.dayNumber === dayNumber)
+            return daysComponents[foundKey]
+        }
+        const generateCourse = (course) => {
+            const options = { month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' };
+            const container = document.createElement('div')
+            container.classList.add('row','m-0','my-1')
+            const column = document.createElement('div')
+            column.classList.add('col')
+            const title = document.createElement('div')
+            title.classList.add('row','m-0','justify-content-center','font-weight-bold')
+            title.innerText = course.title;
+            const center = document.createElement('div')
+            center.classList.add('row','m-0')
+            center.innerText = course.centerName
+            const start = document.createElement('div')
+            start.classList.add('row','m-0')
+            start.innerText = `Starts at: ${course.start.toLocaleDateString('fr-CH', options)}`
+            const end = document.createElement('div')
+            end.classList.add('row','m-0')
+            end.innerText = `Ends at: ${course.end.toLocaleDateString('fr-CH', options)}`
+            column.appendChild(title)
+            column.appendChild(center)
+            column.appendChild(start)
+            column.appendChild(end)
+            container.appendChild(column);
+            return container;
+        }
+        const mapCenterId = (centerId) => {
+                const [foundKey, foundValue] = Object.entries(GYMS).find(([k, v]) => v.id === centerId)
+                return GYMS[foundKey].name
+            }
+        const processPeriods = (periods) => {
+            const periodsWithDatetime = periods.map(period => ({period, ...period.genDatetimesFromDate(Date.now())})).sort((a,b) => a.startDate - b.startDate)
+            return periodsWithDatetime.reduce((acc, current) => {
+                if (!acc.length) return [...acc, current];
+                const previous = acc.at(-1)
+                if (previous.endDate >= current.startDate) {
+                    const merged = {period: new TimedPeriod({
+                        period: {name: previous.period.name+"_"+current.period.name, id: null},
+                        startTime: previous.period.startTime,
+                        endTime: current.period.endTime
+                    }), startDate: previous.startDate, endDate: current.endDate}
+                    acc.splice(acc.length-1, 1)
+                    return [...acc, merged]
+                } else return [...acc, current];
+            }, []).map(p => p.period);
+        }
+
+        const drawColums = () => {
+            Object.entries(WEEKDAYS).forEach(([k, v]) => {
+                const el = generateColumn(v);
+                daysComponents[v.name] = {
+                    weekday: v,
+                    element: el
+                }
+                containerRoot.appendChild(el);
+            })
+        }
+
+        const main = async() => {
+
+            // Load configuration
+            const currentConfig = new ActivFitnessConfiguration();
+
+            // Go over availability blocks
+            let fetchedCourses = await Promise.all(currentConfig.availabilities.map(async (availability) => {
+                // Get courses from current availability through API and type their date fields
+                const body = getBodyFromAvailability(availability);
+                let courses = await ActivFitnessClient.getCourses(body);
+                courses = courses.map(c => ({...c, start: new Date(c.start), end: new Date(c.end), centerName: mapCenterId(c.centerId)}))
+
+                // Process availability time frames so that overlapping periods are considered as one
+                const mergedAvailabilityPeriods = processPeriods(availability.periods);
+
+                // Filter courses according to configuration
+                const filteredCourses = filterCoursesFromConfig(courses, currentConfig.desiredActivities, mergedAvailabilityPeriods);
+                return filteredCourses;
+            }));
+
+            // Reassemble courses fetched within availability blocks
+            fetchedCourses = fetchedCourses.reduce((result, current) => [...result, ...current],[])
+            //console.log('start_daytimes: ', [...new Set(fetchedCourses.map(course => course.start))].sort())
+
+            // Display result
+            drawColums();
+            fetchedCourses.forEach(c => {
+                const parent = getColumnForCourse(c).element;
+                parent.appendChild(generateCourse(c))
+            })
+
+        }
+        
+        main();
+    </script>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.3/dist/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+</body>
+</html>
