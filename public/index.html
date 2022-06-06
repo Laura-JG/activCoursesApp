@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ActivFitness courses scheduler</title>
+    <title>ActivFitness GE courses scheduler</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
     <script src="//unpkg.com/alpinejs" defer></script>
 </head>
 <body>
     <div class="container">
         <div class="row m-0 my-1 justify-content-center">
-            <div class=" h1 text-primary">ActivFitness courses scheduler</div>
+            <div class=" h1 text-primary">ActivFitness Geneva courses scheduler</div>
         </div>
         <div class="col-12 m-0 my-1" x-data="{ open: false }">
             <div class="row m-0 justify-content-center">
@@ -39,9 +39,9 @@
             return column;
         }
         const mapCenterId = (centerId) => {
-                const [foundKey, foundValue] = Object.entries(GYMS).find(([k, v]) => v.id === centerId)
-                return GYMS[foundKey].name
-            }
+            const [foundKey, foundValue] = Object.entries(GYMS_GE).find(([k, v]) => v.id === centerId)
+            return GYMS_GE[foundKey].name
+        }
         const processPeriods = (periods) => {
             const periodsWithDatetime = periods.map(period => ({period, ...period.genDatetimesFromDate(Date.now())})).sort((a,b) => a.startDate - b.startDate)
             return periodsWithDatetime.reduce((acc, current) => {
@@ -72,7 +72,7 @@
             //from course date get day number
             const dayNumber = course.start.getDay();
             //return corresponding day component
-            const [foundKey, foundValue] = Object.entries(daysComponents).find(([k, v]) => v.weekday.dayNumber === dayNumber)
+            const [foundKey, foundValue] = Object.entries(daysComponents).find(([k, v]) => (v.weekday.dayNumber % 7) === dayNumber)
             return daysComponents[foundKey]
         }
         const generateCourse = (course) => {
@@ -103,14 +103,21 @@
 
         const main = async() => {
 
+            // Get list of all possible courses in Geneva
+            const init_body = getInitBody();
+            let possibleCourses = await ActivFitnessClient.getGECoursesNames(init_body);
+            possibleCourses = possibleCourses.map(c => c.coursetitle);
+            possibleCourses = [...new Set(possibleCourses)];
+            console.log(possibleCourses);
+
             // Load configuration
-            const currentConfig = new ActivFitnessConfiguration();
+            const currentConfig = new ActivFitnessConfiguration();  
 
             // Go over availability blocks
             let fetchedCourses = await Promise.all(currentConfig.availabilities.map(async (availability) => {
                 // Get courses from current availability through API and type their date fields
-                const body = getBodyFromAvailability(availability);
-                let courses = await ActivFitnessClient.getCourses(body);
+                const body = getCfgBody(availability, currentConfig);
+                let courses = await ActivFitnessClient.getScheduledCourses(body);
                 courses = courses.map(c => ({...c, start: new Date(c.start), end: new Date(c.end), centerName: mapCenterId(c.centerId)}))
 
                 // Process availability time frames so that overlapping periods are considered as one

@@ -5,7 +5,7 @@ const WEEKDAYS = {
     THURSDAY: { name: "Thursday", dayNumber: 4 },
     FRIDAY: { name: "Friday", dayNumber: 5 },
     SATURDAY: { name: "Saturday", dayNumber: 6 },
-    SUNDAY: { name: "Sunday", dayNumber: 0 }
+    SUNDAY: { name: "Sunday", dayNumber: 7 }
 }
 const PERIODS = {
     MORNING: { name: "Morning", id: 1 },
@@ -13,38 +13,58 @@ const PERIODS = {
     AFTERNOON: { name: "Afternoon", id: 3 },
     EVENING: { name: "Evening", id: 4  }
 }
-const GYMS = {
+const GYMS_GE = {
+    ACACIAS: { name: "ACTIV FITNESS Acacias", id: 159 },
+    ALPES: { name: "ACTIV FITNESS Genève Alpes", id: 160 },
     BALEXERT: { name: "ACTIV FITNESS Genève Balexert", id: 154 },
     CHARMILLES: { name: "ACTIV FITNESS Genève Charmilles", id: 161 },
+    CYGNES: { name: "ACTIV FITNESS Genève Cygnes", id: 31 },
+    EAUX_VIVES : { name: "ACTIV FITNESS Genève Eaux-Vives", id: 157 },
     ICC: { name: "ACTIV FITNESS Genève ICC", id: 163 },
-    VERMONT: { name: "ACTIV FITNESS Genève Vermont", id: 166 },
-    ALPES: { name: "ACTIV FITNESS Genève Alpes", id: 160 },
-    CYGNES: { name: "ACTIV FITNESS Genève Cygnes", id: 31 }
+    MAUNOIR : { name: "ACTIV FITNESS Genève Maunoir", id: 164 },
+    PETIT_LANCY : { name: "ACTIV FITNESS Petit-Lancy", id: 165 },
+    PLAN_LES_OUATES : { name: "ACTIV FITNESS Plan-les-Ouates", id: 169 },
+    PONT_ROUGE : { name: "ACTIV FITNESS Lancy Pont Rouge", id: 156 },
+    RHONE : { name: "ACTIV FITNESS Genève Rhône", id: 52 },
+    THONEX : { name: "ACTIV FITNESS Thônex", id: 162 },
+    VERMONT: { name: "ACTIV FITNESS Genève Vermont", id: 166 }
 }
 
-const getBodyFromAvailability = (availability) => {
+const getInitBody = () => {
+    return body = {
+        language: "fr",
+        skip: 0,
+        take: 100,
+        selectMethod: 2,
+        memberIdTac: 0,
+        centerIds: Object.entries(GYMS_GE).map(([k, v]) => v.id),
+        daytimeIds: Object.entries(PERIODS).map(([k, v]) => v.id),
+        weekdayIds: Object.entries(WEEKDAYS).map(([k, v]) => v.dayNumber),
+        coursetitles: []
+    };
+}
 
-    const body = {
-                language: "fr",
-                skip: 0, // Number of days skipped
-                take: 8, // Number of days to look ahead, including today, max 21. 0 = all possible
-                selectMethod: 2,
-                memberIdTac: 0,
-                centerIds: availability.gyms.map(gym => gym.id),
-                daytimeIds: availability.periods.map(period => period.id),
-                weekdayIds: availability.days.map(day => day.dayNumber),
-                coursetitles: []
-            };
-    return body;
+const getCfgBody = (availability, configuration) => {
+    return body = {
+        language: "fr",
+        skip: configuration.timeRange.nDaysToSkip,
+        take: configuration.timeRange.nDaysSpan,
+        selectMethod: 2,
+        memberIdTac: 0,
+        centerIds: availability.gyms.map(gym => gym.id),
+        daytimeIds: availability.periods.map(period => period.id),
+        weekdayIds: availability.days.map(day => day.dayNumber),
+        coursetitles: []
+    };
 }
 
 const filterCoursesFromConfig = (courses, desiredActivities, availabilityPeriods) => {
 
-    const activityNames = desiredActivities.map(activity => activity.id);
+    const activityIds = desiredActivities.map(activity => activity.id);
 
     const filtered = courses.filter(course => {
 
-        const courseCondition = activityNames.includes(course.title)
+        const activityCondition = activityIds.includes(course.title)
 
         const timeCondition = availabilityPeriods.map(period => {
             //course.start is the same day as course end so it's okay
@@ -52,7 +72,7 @@ const filterCoursesFromConfig = (courses, desiredActivities, availabilityPeriods
             return (course.start >= periodStartDatetime) && (course.end <= periodEndDatetime);
         }).some(e => e);
 
-        return courseCondition && timeCondition ;
+        return activityCondition && timeCondition ;
     });
 
     return filtered;
@@ -140,7 +160,7 @@ class ActivFitnessConfiguration {
     availabilities=[
         {
             name: "Week days - home",
-            gyms: [GYMS.BALEXERT, GYMS.CHARMILLES, GYMS.ICC, GYMS.VERMONT],
+            gyms: [GYMS_GE.BALEXERT, GYMS_GE.CHARMILLES, GYMS_GE.ICC, GYMS_GE.VERMONT],
             days: [
                 WEEKDAYS.MONDAY,
                 WEEKDAYS.TUESDAY,
@@ -153,7 +173,7 @@ class ActivFitnessConfiguration {
         },
         {
             name: "Week days - office",
-            gyms: [GYMS.BALEXERT, GYMS.CHARMILLES, GYMS.ICC, GYMS.VERMONT, GYMS.ALPES, GYMS.CYGNES],
+            gyms: [GYMS_GE.BALEXERT, GYMS_GE.CHARMILLES, GYMS_GE.ICC, GYMS_GE.VERMONT, GYMS_GE.ALPES, GYMS_GE.CYGNES],
             days: [
                 WEEKDAYS.WEDNESDAY,
                 WEEKDAYS.THURSDAY
@@ -164,7 +184,7 @@ class ActivFitnessConfiguration {
         },
         {
             name: "Week-end",
-            gyms: [GYMS.BALEXERT, GYMS.CHARMILLES, GYMS.ICC, GYMS.VERMONT],
+            gyms: [GYMS_GE.BALEXERT, GYMS_GE.CHARMILLES, GYMS_GE.ICC, GYMS_GE.VERMONT],
             days: [
                 WEEKDAYS.SATURDAY,
                 WEEKDAYS.SUNDAY
@@ -185,12 +205,17 @@ class ActivFitnessConfiguration {
         new Activity("Les Mills CORE® 45'"),
         new Activity("BODYSTEP® 55'")
     ];
+    timeRange = {
+        nDaysToSkip: 0,
+        nDaysSpan: 8
+    }
     constructor(){}
 }
 
 class ActivFitnessClient {
-    static endpoint = "/courses";
-    static getCourses = async (body) => {
+    static scheduledCoursesEndpoint = "/scheduledCourses";
+    static geCourseTitlesEndpoint = "/geCourseTitles";
+    static getGECoursesNames = async (body) => {
         const options = {
             method: 'POST',
             headers: {
@@ -200,7 +225,30 @@ class ActivFitnessClient {
             body: JSON.stringify(body)
         }
         try {
-            const response = await fetch(ActivFitnessClient.endpoint, options);
+            const response = await fetch(ActivFitnessClient.geCourseTitlesEndpoint, options);
+            if(!response){
+                throw {
+                    errorCode: response.status,
+                    message: response.statusText
+                }
+            }
+            const json = await response.json()
+            return json;
+        } catch (e) {
+            console.error("[getCourses] cannnot get courses",e);
+        }
+    }
+    static getScheduledCourses = async (body) => {
+        const options = {
+            method: 'POST',
+            headers: {
+                'Content-type':'application/json',
+                'Accept':'application/json'
+            },
+            body: JSON.stringify(body)
+        }
+        try {
+            const response = await fetch(ActivFitnessClient.scheduledCoursesEndpoint, options);
             if(!response){
                 throw {
                     errorCode: response.status,

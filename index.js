@@ -9,7 +9,7 @@ const coursesEndpoint = rootUrl + '/kp/api/Courselist/all'
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 const port = process.env.PORT || 9000
-router.post('/courses',(request,response) => {
+router.post('/scheduledCourses',(request,response) => {
     console.log("Request received:",request.body)
     const body = request.body;
 
@@ -20,6 +20,19 @@ router.post('/courses',(request,response) => {
         })
         .then(res => res.json())
         .then(json => response.send(json.courses));
+});
+
+router.post('/geCourseTitles',(request,response) => {
+    console.log("Request received:",request.body)
+    const body = request.body;
+
+    fetch(coursesEndpoint, {
+            method: 'post',
+            body:    JSON.stringify(body),
+            headers: { 'Content-Type': 'application/json' },
+        })
+        .then(res => res.json())
+        .then(json => response.send(json.filter.coursetitles));
 });
 
 // add router in the Express app.
