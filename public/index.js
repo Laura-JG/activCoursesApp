@@ -40,7 +40,7 @@ const getBodyFromAvailability = (availability) => {
 
 const filterCoursesFromConfig = (courses, desiredActivities, availabilityPeriods) => {
 
-    const activityNames = desiredActivities.map(activity => activity.name);
+    const activityNames = desiredActivities.map(activity => activity.id);
 
     const filtered = courses.filter(course => {
 
@@ -71,21 +71,17 @@ class Gym {
     }
 }
 
-// Unnecessary?
 class Activity {
+    id = null;
     name = null;
+    duration = null;
 
-    constructor(name) {
-        this.name = name;
+    constructor(id) {
+        this.id = id;
+        const splat = id.split(' ');
+        this.duration = splat.slice(0, -1).join(' ');
+        this.name = splat.at(-1);
     }
-}
-class AvailableActivity extends Activity {
-    timeFrame = null;
-    constructor(name, timeFrame) {
-        super(id, name);
-        this.timeFrame = timeFrame;
-    }
-
 }
 
 class TimedPeriod {

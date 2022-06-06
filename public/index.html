@@ -38,6 +38,36 @@
             column.appendChild(title)
             return column;
         }
+        const mapCenterId = (centerId) => {
+                const [foundKey, foundValue] = Object.entries(GYMS).find(([k, v]) => v.id === centerId)
+                return GYMS[foundKey].name
+            }
+        const processPeriods = (periods) => {
+            const periodsWithDatetime = periods.map(period => ({period, ...period.genDatetimesFromDate(Date.now())})).sort((a,b) => a.startDate - b.startDate)
+            return periodsWithDatetime.reduce((acc, current) => {
+                if (!acc.length) return [...acc, current];
+                const previous = acc.at(-1)
+                if (previous.endDate >= current.startDate) {
+                    const merged = {period: new TimedPeriod({
+                        period: {name: previous.period.name+"_"+current.period.name, id: null},
+                        startTime: previous.period.startTime,
+                        endTime: current.period.endTime
+                    }), startDate: previous.startDate, endDate: current.endDate}
+                    acc.splice(acc.length-1, 1)
+                    return [...acc, merged]
+                } else return [...acc, current];
+            }, []).map(p => p.period);
+        }
+        const drawColums = () => {
+            Object.entries(WEEKDAYS).forEach(([k, v]) => {
+                const el = generateColumn(v);
+                daysComponents[v.name] = {
+                    weekday: v,
+                    element: el
+                }
+                containerRoot.appendChild(el);
+            })
+        }
         const getColumnForCourse = (course) => {
             //from course date get day number
             const dayNumber = course.start.getDay();
@@ -69,37 +99,6 @@
             column.appendChild(end)
             container.appendChild(column);
             return container;
-        }
-        const mapCenterId = (centerId) => {
-                const [foundKey, foundValue] = Object.entries(GYMS).find(([k, v]) => v.id === centerId)
-                return GYMS[foundKey].name
-            }
-        const processPeriods = (periods) => {
-            const periodsWithDatetime = periods.map(period => ({period, ...period.genDatetimesFromDate(Date.now())})).sort((a,b) => a.startDate - b.startDate)
-            return periodsWithDatetime.reduce((acc, current) => {
-                if (!acc.length) return [...acc, current];
-                const previous = acc.at(-1)
-                if (previous.endDate >= current.startDate) {
-                    const merged = {period: new TimedPeriod({
-                        period: {name: previous.period.name+"_"+current.period.name, id: null},
-                        startTime: previous.period.startTime,
-                        endTime: current.period.endTime
-                    }), startDate: previous.startDate, endDate: current.endDate}
-                    acc.splice(acc.length-1, 1)
-                    return [...acc, merged]
-                } else return [...acc, current];
-            }, []).map(p => p.period);
-        }
-
-        const drawColums = () => {
-            Object.entries(WEEKDAYS).forEach(([k, v]) => {
-                const el = generateColumn(v);
-                daysComponents[v.name] = {
-                    weekday: v,
-                    element: el
-                }
-                containerRoot.appendChild(el);
-            })
         }
 
         const main = async() => {
