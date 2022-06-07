@@ -58,7 +58,7 @@ const getCfgBody = (availability, configuration) => {
     };
 }
 
-const filterCoursesFromConfig = (courses, desiredActivities, availabilityPeriods) => {
+const filterCourses = (courses, desiredActivities, availabilityPeriods) => {
 
     const activityIds = desiredActivities.map(activity => activity.id);
 
